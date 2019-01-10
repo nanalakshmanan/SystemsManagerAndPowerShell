@@ -1,0 +1,59 @@
+#
+# Copyright 2018 Nana Lakshmanan. All Rights Reserved.
+#
+#
+---
+description: Restarts Windows Update with Approval
+schemaVersion: "0.3"
+assumeRole: "{{ AutomationAssumeRole }}"
+parameters:
+  InstanceIds: 
+      type: StringList
+      description: (Required) Instance(s) to target for restarting Windows update service 
+  Approvers: 
+      type: StringList
+      description: (Required) IAM user or user arn of approvers for the automation action
+      default: 
+        - "Nana"
+  SNSTopicArn:
+      type: String
+      description: (Required) The SNS topic ARN used to send pending approval notification for start instance action. The SNS topic name must start with Automation.
+      default: arn:aws:sns:{{global:REGION}}:675675802741:HRApplicationAlerts
+  Email:
+    type: String
+    description: (Required) Email to notify of restarts
+    default: "nanalakshmanan.test@gmail.com"
+  AutomationAssumeRole:
+    type: String
+    description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
+    default: ""
+mainSteps:
+  # request approval
+  - name: RequestApproval
+    action: aws:approve
+    inputs:
+      NotificationArn: "{{SNSTopicArn}}"
+      Message: "Approval requested to restart Windows update service"
+      Approvers: "{{Approvers}}"
+      MinRequiredApprovals: 1
+  # Run the command document to restart Windows update
+  - name: RestartWindowsUpdate
+    action: aws:runCommand
+    inputs:
+      DocumentName: Nana-RestartWindowsUpdate
+      InstanceIds: "{{InstanceIds}}"
+
+  # send an email if cloud trail logging is not enabled
+  - name: SendEmail
+    action: aws:invokeLambdaFunction
+    inputs:
+      FunctionName: SendEmail 
+      Payload: |-
+          {
+            "name": "Info",
+            "to": "{{Email}}",
+            "subject": "Windows Update Service Restarted",
+            "message": "Windows update service was restarted in one or more instances. Refer command id : https://{{global:REGION}}.console.aws.amazon.com/systems-manager/run-command/{{RestartWindowsUpdate.CommandId}}?region={{global:REGION}}"
+          }
+    isEnd: true 
+...

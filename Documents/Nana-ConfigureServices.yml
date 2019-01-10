@@ -1,0 +1,50 @@
+#
+# Copyright 2018 Nana Lakshmanan. All Rights Reserved.
+#
+#
+---
+schemaVersion: "2.2"
+description: "Run PowerShell Command: Configuring services using PowerShell DSC"
+
+mainSteps:
+- action: "aws:runPowerShellScript"
+  name: "example"
+  inputs:
+    runCommand:
+    -  | 
+          Configuration MyServices
+          {    
+            # Import the module that defines custom resources
+            Import-DscResource -Module PSDesiredStateConfiguration
+
+            # Ensure remote desktop and error reporting are not running
+            foreach($Service in @('TermService', 'Wersvc'))
+            {
+                Service "$Service"
+                {
+                    Name        = $Service
+                    State       = 'Stopped'
+                    StartupType = 'Manual'
+                }
+            }
+
+            # Install the IIS role
+            WindowsFeature IIS
+            {
+                Ensure          = 'Present'
+                Name            = 'Web-Server'
+            }
+
+            # Ensure w3svc is running
+            Service w3svc
+            {
+                Name        = 'w3svc'
+                State       = 'Running'
+                StartupType = 'Automatic'
+                DependsOn   = '[WindowsFeature]IIS'
+            }
+          }
+          MyServices -OutputPath C:\Temp\MyServices
+          
+          Start-DscConfiguration -Path C:\Temp\MyServices -ComputerName localhost -Wait -Verbose -Force
+...

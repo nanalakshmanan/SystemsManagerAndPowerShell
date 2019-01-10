@@ -1,0 +1,36 @@
+#
+# Copyright 2018 Nana Lakshmanan. All Rights Reserved.
+#
+#
+---
+schemaVersion: "2.2"
+description: "Collect DSC Compliance information"
+
+mainSteps:
+- action: "aws:runPowerShellScript"
+  name: "example"
+  inputs:
+    runCommand:
+    -  | 
+          Import-Module AWSPowerShell
+          $d = New-Object 'system.collections.generic.dictionary[string,string]'
+          $s = Get-DscConfigurationStatus
+          $d["HostName"] = $s.HostName
+          $d["Status"] = $s.Status
+          $d["StartDate"] = $s.StartDate
+          $d["Type"] = $s.Type
+          $d["Mode"] = $s.Mode
+          $d["RebootRequested"] = $s.RebootRequested
+          $d["NumberOfResources"] = $s.NumberOfResources
+          $e= New-Object "System.Collections.Generic.List[System.Collections.Generic.Dictionary[System.String, System.String]]"
+          $e.Add($d)
+          $item = New-Object Amazon.SimpleSystemsManagement.Model.InventoryItem
+          $item.SchemaVersion='1.0'
+          $Item.TypeName = 'Custom:DscCompliance'
+          $item.Content = $e
+          $date = Get-Date -Format "s"
+          $date += "Z"
+          $item.CaptureTime = $date
+          $id = Get-EC2InstanceMetadata -Category InstanceId
+          Write-SSMInventory -InstanceId $id -Item $item
+...

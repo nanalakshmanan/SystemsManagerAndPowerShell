@@ -1,0 +1,25 @@
+#
+# Copyright 2018 Nana Lakshmanan. All Rights Reserved.
+#
+#
+---
+description: Restarts a specified service 
+schemaVersion: "0.3"
+assumeRole: "arn:aws:iam::675675802741:role/AutomationServiceRole"
+parameters:
+  InstanceIds: 
+      type: StringList
+      description: (Required) Instance(s) to target for restarting Windows update service 
+  ServiceName:
+      type: String
+      description: (Required) Service name to restart 
+mainSteps:
+  # Run the command document to restart Windows update
+  - name: RestartService
+    action: aws:runCommand
+    inputs:
+      DocumentName: Nana-RestartServiceCommand
+      InstanceIds: "{{InstanceIds}}"
+      Parameters:
+        ServiceName: "{{ServiceName}}"
+...
